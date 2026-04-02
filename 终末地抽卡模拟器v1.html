@@ -1,0 +1,1849 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>终末地抽卡模拟器 | Terminal Gacha</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-dark: #F5F5F5;
+            --bg-card: #1F1F1F;
+            --text-primary: #FFFFFF;
+            --text-secondary: #999999;
+            --border-color: #2A2A2A;
+        }
+
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+        
+        /* 电子水印 */
+        .watermark {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-45deg);
+            font-size: 3rem;
+            font-weight: bold;
+            color: rgba(255, 255, 255, 0.03);
+            pointer-events: none;
+            white-space: nowrap;
+            z-index: 0;
+            user-select: none;
+        }
+        
+        .watermark-line2 {
+            margin-top: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            padding: 30px 0 20px;
+        }
+
+        .logo {
+            font-family: 'Microsoft YaHei, sans-serif';
+            font-size: 1.8rem;
+            font-weight: 900;
+            color: #1F1F1F;
+            margin-bottom: 5px;
+        }
+
+        .subtitle {
+            font-size: 0.8rem;
+            color: #666666;
+            letter-spacing: 2px;
+        }
+
+        /* Tab切换 */
+        .tab-container {
+            display: flex;
+            background: var(--bg-card);
+            margin-bottom: 1px;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 15px 20px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.3s;
+            border-bottom: 2px solid transparent;
+        }
+
+        .tab-btn:hover {
+            color: var(--text-primary);
+            background: #252525;
+        }
+
+        .tab-btn.active {
+            color: #FFD700;
+            border-bottom-color: #FFD700;
+            background: #252525;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .panel {
+            background: var(--bg-card);
+            padding: 0;
+            margin-bottom: 1px;
+        }
+
+        .panel-title {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            padding: 15px 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+        }
+
+        .panel-title::before {
+            content: '';
+            width: 3px;
+            height: 16px;
+            background: #FFD700;
+        }
+
+        .panel-title .toggle-icon {
+            margin-left: auto;
+            transition: transform 0.3s;
+            color: var(--text-secondary);
+        }
+
+        .panel-title.collapsed .toggle-icon {
+            transform: rotate(-90deg);
+        }
+
+        .panel-content {
+            overflow: hidden;
+            transition: max-height 0.3s ease, opacity 0.3s ease;
+            max-height: 2000px;
+            opacity: 1;
+        }
+
+        .panel-content.collapsed {
+            max-height: 0;
+            opacity: 0;
+        }
+
+        .input-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            padding: 20px;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .input-label {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .input-hint {
+            font-size: 0.75rem;
+            color: #666666;
+        }
+
+        input[type="number"],
+        input[type="text"],
+        select {
+            background: #2A2A2A;
+            border: 1px solid #3A3A3A;
+            border-radius: 0;
+            padding: 12px 15px;
+            color: var(--text-primary);
+            font-size: 1rem;
+            font-family: inherit;
+            transition: all 0.3s ease;
+        }
+
+        input[type="number"]:focus,
+        input[type="text"]:focus,
+        select:focus {
+            outline: none;
+            border-color: #FFD700;
+        }
+
+        input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: #FFD700;
+            cursor: pointer;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            padding: 15px 20px;
+            background: #2A2A2A;
+            border-top: 1px solid var(--border-color);
+            color: var(--text-secondary);
+        }
+
+        .checkbox-group label {
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+        }
+
+        .section-divider {
+            height: 1px;
+            background: var(--border-color);
+            margin: 0;
+        }
+
+        .draw-buttons {
+            display: flex;
+            gap: 1px;
+            flex-wrap: wrap;
+            justify-content: center;
+            background: var(--border-color);
+        }
+
+        .draw-btn {
+            padding: 15px 25px;
+            font-size: 0.9rem;
+            font-weight: 700;
+            border: none;
+            background: #2A2A2A;
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: 'Noto Sans SC', sans-serif;
+            flex: 1;
+            min-width: 120px;
+        }
+
+        .draw-btn:hover:not(:disabled) {
+            background: #3A3A3A;
+            color: #FFD700;
+        }
+
+        .draw-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .draw-btn.primary {
+            background: #FFD700;
+            color: #1F1F1F;
+        }
+
+        .draw-btn.primary:hover:not(:disabled) {
+            background: #FFC000;
+        }
+
+        .draw-btn.highlight-row {
+            background: #FFD700;
+            color: #1F1F1F;
+        }
+
+        .draw-btn.highlight-row:hover:not(:disabled) {
+            background: #FFC000;
+        }
+
+        .custom-draw {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 15px 20px;
+            justify-content: center;
+            background: #252525;
+        }
+
+        .custom-draw input {
+            width: 150px;
+            text-align: center;
+        }
+
+        .results-panel {
+            display: none;
+        }
+
+        .results-panel.show {
+            display: block;
+        }
+
+        .result-section {
+            margin-bottom: 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .result-section:last-child {
+            margin-bottom: 0;
+            border-bottom: none;
+        }
+
+        .result-title {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--text-secondary);
+            padding: 12px 20px;
+            background: #252525;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .result-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .result-table th,
+        .result-table td {
+            padding: 12px 20px;
+            text-align: center;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-primary);
+        }
+
+        .result-table th {
+            background: #252525;
+            color: var(--text-secondary);
+            font-weight: 500;
+            font-size: 0.85rem;
+        }
+
+        .result-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .result-table td:first-child {
+            font-weight: 700;
+            text-align: left;
+        }
+
+        .result-table .highlight-row {
+            background: rgba(255, 215, 0, 0.05);
+        }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 1px;
+            background: var(--border-color);
+        }
+
+        .stat-card {
+            background: #252525;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .stat-card.highlight {
+            background: rgba(255, 215, 0, 0.1);
+        }
+
+        .stat-value {
+            font-family: 'Orbitron', monospace;
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+            color: var(--text-primary);
+        }
+
+        .stat-value.gold { color: #FFD700; }
+        .stat-value.primary { color: var(--text-primary); }
+        .stat-value.secondary { color: var(--text-secondary); }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        /* 第二种模拟器结果样式 */
+        .result-big {
+            background: #252525;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .result-big-value {
+            font-family: 'Orbitron', monospace;
+            font-size: 3rem;
+            font-weight: 700;
+            color: #FFD700;
+            margin-bottom: 10px;
+        }
+
+        .result-big-label {
+            font-size: 1rem;
+            color: var(--text-secondary);
+        }
+
+        .result-detail-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1px;
+            background: var(--border-color);
+        }
+
+        .result-detail-item {
+            background: #252525;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .result-detail-value {
+            font-family: 'Orbitron', monospace;
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 5px;
+        }
+
+        .result-detail-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .progress-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            z-index: 1000;
+        }
+
+        .progress-overlay.show {
+            display: flex;
+        }
+
+        .progress-box {
+            background: var(--bg-card);
+            border: 1px solid #FFD700;
+            padding: 40px;
+            text-align: center;
+            max-width: 350px;
+        }
+
+        .progress-title {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #FFD700;
+            margin-bottom: 20px;
+        }
+
+        .progress-bar-container {
+            background: #2A2A2A;
+            height: 8px;
+            overflow: hidden;
+            margin-bottom: 15px;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: #FFD700;
+            transition: width 0.1s ease;
+        }
+
+        .progress-text {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        @media (max-width: 600px) {
+            .logo { font-size: 1.5rem; }
+            .input-grid { grid-template-columns: 1fr; }
+            .result-table { font-size: 0.85rem; }
+            .result-table th, .result-table td { padding: 10px 12px; }
+            .draw-btn { padding: 12px 15px; font-size: 0.85rem; }
+            .result-detail-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        /* 滚动条样式 */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #2A2A2A;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #555555;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #FFD700;
+        }
+    </style>
+</head>
+<body>
+    <!-- 电子水印 -->
+    <div class="watermark">@jasenwdh</div>
+    <div class="watermark watermark-line2">@Yamazaki_Kaoru</div>
+    <div class="container">
+        <header>
+            <h1 class="logo">终末地抽卡模拟</h1>
+            <p class="subtitle">Terminal Gacha Simulator</p>
+        </header>
+
+        <!-- Tab切换 -->
+        <div class="tab-container">
+            <button class="tab-btn active" onclick="switchTab('sim1')">资源抽卡</button>
+            <button class="tab-btn" onclick="switchTab('sim2')">抽卡规划</button>
+            <button class="tab-btn" onclick="switchTab('sim3')">武器抽取</button>
+        </div>
+
+        <!-- 模拟1: 资源抽卡 -->
+        <div id="sim1" class="tab-content active">
+            <!-- 资源与继承设置 -->
+            <div class="panel">
+                <div class="panel-title" onclick="togglePanel(this)">
+                    资源与继承设置
+                    <span class="toggle-icon">▼</span>
+                </div>
+                
+                <div class="panel-content">
+                    <div class="input-grid">
+                        <div class="input-group">
+                            <label class="input-label">🎫 抽卡券 (张)</label>
+                            <input type="number" id="ticketCount" value="0" min="0" placeholder="抽卡券数量">
+                        </div>
+                        <div class="input-group">
+                            <label class="input-label">🟠 源石 (个)</label>
+                            <input type="number" id="originStone" value="0" min="0" placeholder="1源石=75合成玉">
+                        </div>
+                        <div class="input-group">
+                            <label class="input-label">🔴 合成玉 (个)</label>
+                            <input type="number" id="jade" value="0" min="0" placeholder="500=1抽">
+                        </div>
+                        <div class="input-group">
+                            <label class="input-label">🔄 6星保底继承</label>
+                            <input type="number" id="pityInherit" value="0" min="0" max="80" placeholder="0-80">
+                            <span class="input-hint">软保底累计</span>
+                        </div>
+                    </div>
+
+                    <div class="checkbox-group" style="display: flex; flex-wrap: wrap; gap: 15px; justify-content: flex-start;">
+                        <label style="cursor: pointer;">
+                            <input type="checkbox" id="useOriginStone">
+                            <span>使用源石抽卡</span>
+                        </label>
+                        <label style="cursor: pointer;">
+                            <input type="checkbox" id="signAndShopBonus">
+                            <span>签到5抽+商店5抽</span>
+                        </label>
+                        <label style="cursor: pointer;">
+                            <input type="checkbox" id="prev60Pity">
+                            <span>上卡池60抽奖励</span>
+                        </label>
+                        <div style="flex: 1;"></div>
+                        <label style="cursor: pointer;">
+                            <input type="checkbox" id="debugMode" onchange="toggleDebugPanel()">
+                            <span>Debug</span>
+                        </label>
+                    </div>
+                    
+                    <div id="debugPanel" class="debug-panel" style="display: none; margin-top: 10px;">
+                        <textarea id="debugOutput" readonly style="width: 100%; height: 200px; font-family: monospace; font-size: 12px; resize: vertical;"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 抽卡规则 -->
+            <div class="panel">
+                <div class="panel-title collapsed" onclick="togglePanel(this)">
+                    抽卡规则说明
+                    <span class="toggle-icon">▼</span>
+                </div>
+                
+                <div class="panel-content collapsed">
+                    <div style="background: #252525; padding: 15px 20px; font-size: 0.85rem;">
+                        <div style="padding: 8px 0; border-bottom: 1px solid #2A2A2A; display: flex; gap: 10px;">
+                            <span style="background: #2A2A2A; padding: 2px 8px; white-space: nowrap;">6星概率</span>
+                            <span>1-65抽: 0.8% | 66抽: 5.8% | 之后每抽+5% | 80抽: 100%</span>
+                        </div>
+                        <div style="padding: 8px 0; border-bottom: 1px solid #2A2A2A; display: flex; gap: 10px;">
+                            <span style="background: #2A2A2A; padding: 2px 8px; white-space: nowrap;">5星概率</span>
+                            <span>基础8% | 每10抽至少1个5星或以上(本池生效)</span>
+                        </div>
+                        <div style="padding: 8px 0; border-bottom: 1px solid #2A2A2A; display: flex; gap: 10px;">
+                            <span style="background: #2A2A2A; padding: 2px 8px; white-space: nowrap;">免费抽</span>
+                            <span>每个卡池前5抽免费，计入保底但不消耗资源</span>
+                        </div>
+                        <div style="padding: 8px 0; border-bottom: 1px solid #2A2A2A; display: flex; gap: 10px;">
+                            <span style="background: #2A2A2A; padding: 2px 8px; white-space: nowrap;">30抽特殊</span>
+                            <span>累计30抽时触发特殊十连，0.8%概率，不计入保底/120抽</span>
+                        </div>
+                        <div style="padding: 8px 0; border-bottom: 1px solid #2A2A2A; display: flex; gap: 10px;">
+                            <span style="background: #2A2A2A; padding: 2px 8px; white-space: nowrap;">120抽UP</span>
+                            <span>前120抽期间必出1个UP角色（不含赠送）</span>
+                        </div>
+                        <div style="padding: 8px 0; border-bottom: 1px solid #2A2A2A; display: flex; gap: 10px;">
+                            <span style="background: #2A2A2A; padding: 2px 8px; white-space: nowrap;">240抽赠送</span>
+                            <span>每240抽赠送1个6星，计为限定，无武器配额</span>
+                        </div>
+                        <div style="padding: 8px 0; display: flex; gap: 10px;">
+                            <span style="background: #2A2A2A; padding: 2px 8px; white-space: nowrap;">歪率</span>
+                            <span>出6星时50%为UP，50%为非UP</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 模拟按钮 -->
+            <div class="panel">
+                <div class="panel-title" style="cursor: default;">
+                    模拟抽卡
+                </div>
+                
+                <div class="draw-buttons">
+                    <button class="draw-btn highlight-row" onclick="startSimulation(1000)">模拟1000次</button>
+                    <button class="draw-btn highlight-row" onclick="startSimulation(10000)">模拟1万次</button>
+                    <button class="draw-btn highlight-row" onclick="startSimulation(100000)">模拟10万次</button>
+                </div>
+                
+                <div class="custom-draw">
+                    <span>自定义次数:</span>
+                    <input type="number" id="customDraws" placeholder="输入次数" min="1">
+                    <button class="draw-btn primary" onclick="startCustomSimulation()">开始模拟</button>
+                </div>
+                
+            </div>
+
+            <!-- 结果展示 -->
+            <div class="panel results-panel" id="resultsPanel1">
+                <div class="panel-title" style="cursor: default;">
+                    模拟结果
+                </div>
+                
+                <div id="resultsContent1"></div>
+            </div>
+        </div>
+
+        <!-- 模拟2: 抽卡规划 -->
+        <div id="sim2" class="tab-content">
+            <!-- 规划设置 -->
+            <div class="panel">
+                <div class="panel-title" onclick="togglePanel(this)">
+                    目标设置
+                    <span class="toggle-icon">▼</span>
+                </div>
+                
+                <div class="panel-content">
+                    <div class="input-grid">
+                        <div class="input-group">
+                            <label class="input-label">
+                                ⭐ 需要限定数
+                            </label>
+                            <input type="number" id="targetUP" value="1" min="1" max="20" placeholder="1-20">
+                            <span class="input-hint">想要获得的限定角色数量</span>
+                        </div>
+                    </div>
+
+                    <div class="section-divider"></div>
+
+                    <div class="input-grid">
+                        <div class="input-group">
+                            <label class="input-label">
+                                🔄 6星保底继承
+                            </label>
+                            <input type="number" id="pityInherit2" value="0" min="0" max="80" placeholder="0-80之间的整数">
+                            <span class="input-hint">当前6星软保底已累计抽数</span>
+                        </div>
+                    </div>
+
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="prev60Pity2">
+                        <label for="prev60Pity2">
+                            上个卡池是否抽满60抽
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 抽卡规则 -->
+            <div class="panel">
+                <div class="panel-title collapsed" onclick="togglePanel(this)">
+                    抽卡规则说明
+                    <span class="toggle-icon">▼</span>
+                </div>
+                
+                <div class="panel-content collapsed">
+                    <div style="background: #252525; padding: 15px 20px; font-size: 0.85rem;">
+                        <div style="padding: 8px 0; border-bottom: 1px solid #2A2A2A; display: flex; gap: 10px;">
+                            <span style="background: #2A2A2A; padding: 2px 8px; white-space: nowrap;">6星概率</span>
+                            <span>1-65抽: 0.8% | 66抽: 5.8% | 之后每抽+5% | 80抽: 100%</span>
+                        </div>
+                        <div style="padding: 8px 0; border-bottom: 1px solid #2A2A2A; display: flex; gap: 10px;">
+                            <span style="background: #2A2A2A; padding: 2px 8px; white-space: nowrap;">5星概率</span>
+                            <span>基础8% | 每10抽至少1个5星或以上(本池生效)</span>
+                        </div>
+                        <div style="padding: 8px 0; border-bottom: 1px solid #2A2A2A; display: flex; gap: 10px;">
+                            <span style="background: #2A2A2A; padding: 2px 8px; white-space: nowrap;">免费抽</span>
+                            <span>每个卡池前5抽免费，计入保底但不消耗资源</span>
+                        </div>
+                        <div style="padding: 8px 0; border-bottom: 1px solid #2A2A2A; display: flex; gap: 10px;">
+                            <span style="background: #2A2A2A; padding: 2px 8px; white-space: nowrap;">30抽特殊</span>
+                            <span>累计30抽时触发特殊十连，0.8%概率，不计入保底/120抽</span>
+                        </div>
+                        <div style="padding: 8px 0; border-bottom: 1px solid #2A2A2A; display: flex; gap: 10px;">
+                            <span style="background: #2A2A2A; padding: 2px 8px; white-space: nowrap;">120抽UP</span>
+                            <span>前120抽期间必出1个UP角色（不含赠送）</span>
+                        </div>
+                        <div style="padding: 8px 0; border-bottom: 1px solid #2A2A2A; display: flex; gap: 10px;">
+                            <span style="background: #2A2A2A; padding: 2px 8px; white-space: nowrap;">240抽赠送</span>
+                            <span>每240抽赠送1个6星，计为限定，无武器配额</span>
+                        </div>
+                        <div style="padding: 8px 0; display: flex; gap: 10px;">
+                            <span style="background: #2A2A2A; padding: 2px 8px; white-space: nowrap;">歪率</span>
+                            <span>出6星时50%为UP，50%为非UP</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 模拟按钮 -->
+            <div class="panel">
+                <div class="panel-title" style="cursor: default;">
+                    模拟抽卡
+                </div>
+                
+                <div class="draw-buttons">
+                    <button class="draw-btn highlight-row" onclick="startSimulation2(1000)">模拟1000次</button>
+                    <button class="draw-btn highlight-row" onclick="startSimulation2(10000)">模拟1万次</button>
+                    <button class="draw-btn highlight-row" onclick="startSimulation2(100000)">模拟10万次</button>
+                </div>
+                
+                <div class="custom-draw">
+                    <span>自定义次数:</span>
+                    <input type="number" id="customDraws2" placeholder="输入次数" min="1">
+                    <button class="draw-btn primary" onclick="startCustomSimulation2()">开始模拟</button>
+                </div>
+            </div>
+
+            <!-- 结果展示 -->
+            <div class="panel results-panel" id="resultsPanel2">
+                <div class="panel-title" style="cursor: default;">
+                    模拟结果
+                </div>
+                
+                <div id="resultsContent2"></div>
+            </div>
+        </div>
+
+        <!-- 模拟3: 武器抽取 -->
+        <div id="sim3" class="tab-content">
+            <!-- 武器配额设置 -->
+            <div class="panel">
+                <div class="panel-title" onclick="togglePanel(this)">
+                    武器配额设置
+                    <span class="toggle-icon">▼</span>
+                </div>
+                
+                <div class="panel-content">
+                    <div class="input-grid">
+                        <div class="input-group">
+                            <label class="input-label">⚔️ 武器配额</label>
+                            <input type="number" id="weaponQuotaInput" value="0" min="0" placeholder="每次十连消耗1980">
+                            <span class="input-hint">每次十连消耗1980武器配额</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 武器抽卡规则 -->
+            <div class="panel">
+                <div class="panel-title collapsed" onclick="togglePanel(this)">
+                    武器抽卡规则说明
+                    <span class="toggle-icon">▼</span>
+                </div>
+                
+                <div class="panel-content collapsed">
+                    <div style="background: #252525; padding: 15px 20px; font-size: 0.85rem;">
+                        <div style="padding: 8px 0; border-bottom: 1px solid #2A2A2A; display: flex; gap: 10px;">
+                            <span style="background: #2A2A2A; padding: 2px 8px; white-space: nowrap;">消耗</span>
+                            <span>每次十连消耗1980武器配额</span>
+                        </div>
+                        <div style="padding: 8px 0; border-bottom: 1px solid #2A2A2A; display: flex; gap: 10px;">
+                            <span style="background: #2A2A2A; padding: 2px 8px; white-space: nowrap;">6星概率</span>
+                            <span>基础4%，每十连保底1个6星</span>
+                        </div>
+                        <div style="padding: 8px 0; border-bottom: 1px solid #2A2A2A; display: flex; gap: 10px;">
+                            <span style="background: #2A2A2A; padding: 2px 8px; white-space: nowrap;">5星概率</span>
+                            <span>基础8%</span>
+                        </div>
+                        <div style="padding: 8px 0; border-bottom: 1px solid #2A2A2A; display: flex; gap: 10px;">
+                            <span style="background: #2A2A2A; padding: 2px 8px; white-space: nowrap;">限定概率</span>
+                            <span>6星中25%为限定武器</span>
+                        </div>
+                        <div style="padding: 8px 0; border-bottom: 1px solid #2A2A2A; display: flex; gap: 10px;">
+                            <span style="background: #2A2A2A; padding: 2px 8px; white-space: nowrap;">6星保底</span>
+                            <span>连续3次十连无6星，第4次前9抽无6星则最后1抽必6星</span>
+                        </div>
+                        <div style="padding: 8px 0; display: flex; gap: 10px;">
+                            <span style="background: #2A2A2A; padding: 2px 8px; white-space: nowrap;">限定保底</span>
+                            <span>连续7次十连无限定，第8次前9抽无限定则最后1抽必限定</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 模拟按钮 -->
+            <div class="panel">
+                <div class="panel-title" style="cursor: default;">
+                    模拟抽卡
+                </div>
+                
+                <div class="draw-buttons">
+                    <button class="draw-btn highlight-row" onclick="startSimulation3(1000)">模拟1000次</button>
+                    <button class="draw-btn highlight-row" onclick="startSimulation3(10000)">模拟1万次</button>
+                    <button class="draw-btn highlight-row" onclick="startSimulation3(100000)">模拟10万次</button>
+                </div>
+                
+                <div class="custom-draw">
+                    <span>自定义次数:</span>
+                    <input type="number" id="customDraws3" placeholder="输入次数" min="1">
+                    <button class="draw-btn primary" onclick="startCustomSimulation3()">开始模拟</button>
+                </div>
+            </div>
+
+            <!-- 结果展示 -->
+            <div class="panel results-panel" id="resultsPanel3">
+                <div class="panel-title" style="cursor: default;">
+                    模拟结果
+                </div>
+                
+                <div id="resultsContent3"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 进度遮罩 -->
+    <div class="progress-overlay" id="progressOverlay">
+        <div class="progress-box">
+            <div class="progress-title">模拟运行中...</div>
+            <div class="progress-bar-container">
+                <div class="progress-bar-fill" id="progressBar"></div>
+            </div>
+            <div class="progress-text" id="progressText">0 / 0</div>
+        </div>
+    </div>
+
+    <script>
+        // ===== Tab切换 =====
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+        }
+
+        // ===== 面板折叠 =====
+        function togglePanel(titleElement) {
+            titleElement.classList.toggle('collapsed');
+            const content = titleElement.nextElementSibling;
+            content.classList.toggle('collapsed');
+        }
+
+        // ===== 抽卡核心逻辑 =====
+
+        // 6星概率计算函数（模拟1和模拟2共用）
+        function get6StarRate(p) {
+            if (p <= 65) return 0.008;  // 1-65抽: 0.8%
+            if (p >= 80) return 1;      // 80抽: 100%
+            return (p - 65) * 0.05 + 0.008;  // 66-79抽递增
+        }
+
+        // ===== 模拟1: 资源抽卡 =====
+
+        class GachaSimulator1 {
+            constructor(config) {
+                // 计算基础抽卡数
+                let baseDraws = config.tickets || 0;
+                if (config.originStone && config.originStone > 0) {
+                    baseDraws += Math.floor((config.originStone * 75 + (config.jade || 0)) / 500);
+                } else {
+                    baseDraws += Math.floor((config.jade || 0) / 500);
+                }
+                // 签到5抽+商店5抽
+                if (config.signAndShopBonus) baseDraws += 10;
+                // 上个卡池60抽奖励
+                if (config.prev60Pity) baseDraws += 10;
+                
+                this.totalDraws = baseDraws;  // 总抽卡数
+                this.basePity = config.pityInherit || 0;  // 保底抽数继承
+                this.debugMode = config.debugMode || false;
+            }
+            
+            runOnce() {
+                // 计数器变量
+                let poolDraws = 0;      // 卡池总抽数
+                let totalLimited = 0;   // 限定总数
+                let totalStar6 = 0;     // 6星总数
+                let weaponQuota = 0;    // 武器配额
+                let pity6 = this.basePity;  // 保底6星抽数
+                let pity5 = 0;          // 保底5星抽数
+                const debugMode = this.debugMode;
+                
+                // 特殊十连抽卡函数
+                const specialTenPull = () => {
+                    let specialPity5 = 0;
+                    for (let i = 0; i < 10; i++) {
+                        poolDraws++;  // 卡池总抽数 += 1
+                        
+                        const roll = Math.random();
+                        
+                        if (roll < 0.004) {
+                            // 0.4%概率限定
+                            totalLimited++;
+                            totalStar6++;
+                            weaponQuota += 2000;
+                            specialPity5 = 0;
+                        } else if (roll < 0.008) {
+                            // 0.4%概率6星
+                            totalStar6++;
+                            weaponQuota += 2000;
+                            specialPity5 = 0;
+                        } else {
+                            // 其他情况（剩余99.2%概率）
+                            if (specialPity5 === 9) {
+                                // 保底5星
+                                weaponQuota += 200;
+                                specialPity5 = 0;
+                            } else {
+                                // 8%概率5星，91.2%概率4星
+                                if (roll < 0.008 + 0.08) {
+                                    weaponQuota += 200;
+                                    specialPity5 = 0;
+                                } else {
+                                    weaponQuota += 20;
+                                    specialPity5++;
+                                }
+                            }
+                        }
+                    }
+                };
+                
+                // 120抽UP保底标志
+                let is120UP = true;
+                
+                // 总抽卡数
+                let remainingDraws = this.totalDraws;
+                
+                // 资源为0时直接返回
+                if (remainingDraws <= 0) {
+                    return {
+                        poolDraws: 0,
+                        star6: 0,
+                        star6UP: 0,
+                        weaponQuota: 0
+                    };
+                }
+                
+                // 开始抽卡
+                while (true) {
+                    poolDraws++;  // 卡池总抽数 += 1
+                    remainingDraws--;  // 总抽卡数 -= 1
+                    
+                    // 130抽UP保底
+                    if (poolDraws === 130 && is120UP) {
+                        totalLimited++;
+                        totalStar6++;
+                        weaponQuota += 2000;
+                        pity6 = 0;
+                        pity5 = 0;
+                        is120UP = false;
+                    }
+                    else {
+                        // 240抽赠送（不含赠送10抽，且排除130保底）
+                        if ((poolDraws - 10) % 240 === 0 && poolDraws > 10 && poolDraws !== 130) {
+                            totalLimited++;
+                            totalStar6++;
+                        }
+                        
+                        // 计算6星概率
+                        const rate6 = get6StarRate(pity6);
+                        const roll = Math.random();
+                        
+                        if (roll < rate6) {
+                            // 出6星
+                            totalStar6++;
+                            weaponQuota += 2000;
+                            pity6 = 0;
+                            pity5 = 0;
+                            
+                            if (Math.random() < 0.5) {
+                                // 50%概率限定
+                                totalLimited++;
+                                is120UP = false;
+                            }
+                            // 歪了：is120UP保持true
+                        } else {
+                            // 未出6星
+                            const rate5 = 0.08;
+                            if (roll < rate6 + rate5) {
+                                // 8%概率5星
+                                weaponQuota += 200;
+                                pity5 = 0;
+                                pity6++;
+                            } else if (pity5 === 9) {
+                                // 10抽保底5星
+                                weaponQuota += 200;
+                                pity5 = 0;
+                                pity6++;
+                            } else {
+                                // 84.2%概率4星
+                                weaponQuota += 20;
+                                pity5++;
+                                pity6++;
+                            }
+                        }
+                    }
+                    
+                    // 30抽特殊十连
+                    if (poolDraws === 30) {
+                        specialTenPull();
+                    }
+                    
+                    // Debug输出
+                    if (debugMode) {
+                        const rate6 = get6StarRate(pity6);
+                        debugLog(`poolDraws:\t${poolDraws}\trate:\t${rate6.toFixed(4)}\tUP:\t${totalLimited}\t6*:\t${totalStar6}\tweapon:\t${weaponQuota}\tpity6:\t${pity6}\tpity5:\t${pity5}\tis120UP:\t${is120UP}\tremaining:\t${remainingDraws}`);
+                    }
+                    
+                    // 总抽卡数用完，退出
+                    if (remainingDraws === 0) {
+                        break;
+                    }
+                }
+                
+                return {
+                    poolDraws: poolDraws,
+                    star6: totalStar6,
+                    star6UP: totalLimited,
+                    weaponQuota: weaponQuota
+                };
+            }
+        }
+
+        // ===== 模拟2: 抽卡规划 =====
+
+        class GachaSimulator2 {
+            constructor(config) {
+                // 只有当pityInherit > 0时才继承保底
+                this.basePity = (config.pityInherit && config.pityInherit > 0) ? config.pityInherit : 0;
+                this.hasPrev60Pity = config.prev60Pity || false;
+            }
+            
+            // 持续抽卡直到获得目标数量的限定角色
+            runUntilTarget(targetUP) {
+                const state = createGachaState({ pityInherit: this.basePity });
+                
+                // 抽一抽
+                const drawOnce = (isFree = false) => {
+                    const rate6 = get6StarRate(state.pity);
+                    const roll = Math.random();
+                    
+                    state.poolDraws++;
+                    state.pityForUP++;
+                    state.drawsSinceLast5++;
+                    
+                    // 非免费抽消耗资源（直接消耗玉）
+                    if (!isFree) {
+                        state.jadeConsumed += 500;
+                    }
+                    
+                    // 120抽UP保底
+                    if (state.poolDraws === 120 && state.is120UPGuarantee) {
+                        state.star6++;
+                        state.star6UP++;
+                        state.weaponQuota += 2000;
+                        state.pity = 0;
+                        state.drawsSinceLast5 = 0;
+                        state.pityForUP = 0;
+                        state.pity++;
+                        return true;
+                    }
+                    
+                    // 240倍数抽赠送（不计入限定）
+                    if (state.poolDraws > 0 && state.poolDraws % 240 === 0) {
+                        state.star6++;
+                    }
+                    
+                    if (roll < rate6) {
+                        state.star6++;
+                        state.weaponQuota += 2000;
+                        state.pity = 0;
+                        state.drawsSinceLast5 = 0;
+                        
+                        if (Math.random() < 0.5) {
+                            state.star6UP++;                // 限定
+                            state.pityForUP = 0;
+                            state.is120UPGuarantee = false; // 出限定后120保底完成
+                            return true;
+                        }
+                        return false;  // 歪了
+                    } else if (roll < rate6 + 0.08 || state.drawsSinceLast5 >= 10) {
+                        state.drawsSinceLast5 = 0;
+                    }
+                    return false;
+                };
+                
+                // 上个卡池60抽奖励：先执行10次免费抽（赠送的，不消耗用户资源）
+                if (this.hasPrev60Pity) {
+                    for (let i = 0; i < 10; i++) {
+                        if (drawOnce(true) && state.star6UP >= targetUP) {
+                            return { poolDraws: state.poolDraws, star6UP: state.star6UP, jadeConsumed: state.jadeConsumed, weaponQuota: state.weaponQuota };
+                        }
+                    }
+                }
+                
+                // 免费5抽
+                for (let i = 0; i < 5; i++) {
+                    if (drawOnce(true) && state.star6UP >= targetUP) {
+                        return { poolDraws: state.poolDraws, star6UP: state.star6UP, jadeConsumed: state.jadeConsumed, weaponQuota: state.weaponQuota };
+                    }
+                }
+                
+                // 持续抽卡直到达到目标（消耗用户资源）
+                while (state.star6UP < targetUP) {
+                    drawOnce(false);
+                }
+                
+                return { poolDraws: state.poolDraws, star6UP: state.star6UP, jadeConsumed: state.jadeConsumed, weaponQuota: state.weaponQuota };
+            }
+        }
+        
+        function getConfig1() {
+            return {
+                tickets: parseInt(document.getElementById('ticketCount').value) || 0,
+                originStone: parseInt(document.getElementById('originStone').value) || 0,
+                jade: parseInt(document.getElementById('jade').value) || 0,
+                useOriginStone: document.getElementById('useOriginStone').checked,
+                signAndShopBonus: document.getElementById('signAndShopBonus').checked,
+                pityInherit: parseInt(document.getElementById('pityInherit').value) || 0,
+                prev60Pity: document.getElementById('prev60Pity').checked,
+                debugMode: document.getElementById('debugMode').checked
+            };
+        }
+        
+        function toggleDebugPanel() {
+            const debugPanel = document.getElementById('debugPanel');
+            const debugOutput = document.getElementById('debugOutput');
+            if (document.getElementById('debugMode').checked) {
+                debugPanel.style.display = 'block';
+                debugOutput.value = '';
+            } else {
+                debugPanel.style.display = 'none';
+            }
+        }
+        
+        function debugLog(message) {
+            const debugOutput = document.getElementById('debugOutput');
+            if (debugOutput) {
+                debugOutput.value += message + '\n';
+                debugOutput.scrollTop = debugOutput.scrollHeight;
+            }
+        }
+        
+        function showResults1(results) {
+            const content = document.getElementById('resultsContent1');
+            
+            content.innerHTML = `
+                <div class="result-section">
+                    <div class="result-title">📊 总览</div>
+                    <div class="stat-grid">
+                        <div class="stat-card">
+                            <div class="stat-value primary">${results.times.toLocaleString()}</div>
+                            <div class="stat-label">模拟次数</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value secondary">${results.avgDrawsPerRun.toLocaleString()}</div>
+                            <div class="stat-label">每次抽数</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value gold">${results.avgLimitPerRun}</div>
+                            <div class="stat-label">平均限定/次</div>
+                        </div>
+                        <div class="stat-card highlight">
+                            <div class="stat-value">${results.elapsedMs}</div>
+                            <div class="stat-label">运行耗时(ms)</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="result-section">
+                    <div class="result-title">🎰 限定角色分布</div>
+                    <table class="result-table">
+                        <thead>
+                            <tr>
+                                <th>限定数量</th>
+                                <th>占比</th>
+                                <th>平均武器配额/次</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${generateDistributionRows(results.distribution, results.quotaByLimit, results.times)}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="result-section">
+                    <div class="result-title">🎲 统计</div>
+                    <div class="stat-grid">
+                        <div class="stat-card">
+                            <div class="stat-value primary">${results.minLimit}</div>
+                            <div class="stat-label">最少限定</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value gold">${results.maxLimit}</div>
+                            <div class="stat-label">最多限定</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value secondary">${results.avg6PerRun}</div>
+                            <div class="stat-label">平均6星/次</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value gold">${results.avgWeaponQuotaPerRun}</div>
+                            <div class="stat-label">平均武器配额/次</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('resultsPanel1').classList.add('show');
+        }
+        
+        function generateDistributionRows(distribution, quotaByLimit, totalTimes) {
+            let rows = '';
+            
+            // 合并7+限定为6+限定
+            let count6Plus = 0;
+            let quota6Plus = 0;
+            for (let i = 6; i <= 20; i++) {
+                count6Plus += distribution[i] || 0;
+                quota6Plus += quotaByLimit[i] || 0;
+            }
+            
+            for (let i = 0; i <= 6; i++) {
+                const count = i === 6 ? count6Plus : (distribution[i] || 0);
+                const percent = totalTimes > 0 ? ((count / totalTimes) * 100).toFixed(1) : '0';
+                const isHighlight = i === 0;
+                
+                let avgQuota;
+                const quotaSum = i === 6 ? quota6Plus : (quotaByLimit[i] || 0);
+                if (count > 0) {
+                    avgQuota = (quotaSum / count).toFixed(1);
+                } else {
+                    avgQuota = 'N/A';
+                }
+                
+                rows += `
+                    <tr class="${isHighlight ? 'highlight-row' : ''}">
+                        <td>${i === 6 ? '6+限定' : i + '限定'}</td>
+                        <td>${percent}%</td>
+                        <td>${avgQuota}</td>
+                    </tr>
+                `;
+            }
+            
+            return rows;
+        }
+        
+        async function runSimulation1(times, config) {
+            const startTime = performance.now();
+            
+            const sim = new GachaSimulator1(config);
+            const dist = {};
+            const quotaByLimit = {};
+            let totalUP = 0;
+            let total6Star = 0;
+            let totalWeaponQuota = 0;
+            let totalPoolDraws = 0;
+            let minLimit = Infinity;
+            let maxLimit = 0;
+            
+            for (let i = 0; i < times; i++) {
+                const result = sim.runOnce();
+                
+                totalUP += result.star6UP;
+                total6Star += result.star6;
+                totalWeaponQuota += result.weaponQuota;
+                totalPoolDraws += result.poolDraws;
+                
+                const limitCount = result.star6UP;
+                dist[limitCount] = (dist[limitCount] || 0) + 1;
+                
+                // 记录每个限定数量组的总配额
+                quotaByLimit[limitCount] = (quotaByLimit[limitCount] || 0) + result.weaponQuota;
+                
+                if (limitCount < minLimit) minLimit = limitCount;
+                if (limitCount > maxLimit) maxLimit = limitCount;
+                
+                if (i % 1000 === 0) {
+                    showProgress(i, times);
+                    await new Promise(r => setTimeout(r, 0));
+                }
+            }
+            
+            const endTime = performance.now();
+            const elapsedMs = Math.round(endTime - startTime);
+            
+            return {
+                times,
+                distribution: dist,
+                quotaByLimit,
+                totalUP,
+                total6Star,
+                totalWeaponQuota,
+                totalPoolDraws,
+                minLimit: minLimit === Infinity ? 0 : minLimit,
+                maxLimit,
+                avgLimitPerRun: (totalUP / times).toFixed(2),
+                avgDrawsPerRun: (totalPoolDraws / times).toFixed(1),
+                avg6PerRun: (total6Star / times).toFixed(2),
+                avgWeaponQuotaPerRun: (totalWeaponQuota / times).toFixed(1),
+                elapsedMs
+            };
+        }
+        
+        async function startSimulation(times) {
+            const config = getConfig1();
+            
+            const buttons = document.querySelectorAll('#sim1 .draw-btn');
+            buttons.forEach(btn => btn.disabled = true);
+            
+            showProgress(0, times);
+            
+            const results = await runSimulation1(times, config);
+            
+            hideProgress();
+            showResults1(results);
+            
+            buttons.forEach(btn => btn.disabled = false);
+        }
+        
+        function startCustomSimulation() {
+            const times = parseInt(document.getElementById('customDraws').value);
+            if (times > 0 && times <= 1000000) {
+                startSimulation(times);
+            } else {
+                alert('请输入1到1000000之间的数字');
+            }
+        }
+        
+        // ===== 模拟2: 抽卡规划 =====
+        
+        function getConfig2() {
+            return {
+                pityInherit: parseInt(document.getElementById('pityInherit2').value) || 0,
+                prev60Pity: document.getElementById('prev60Pity2').checked
+            };
+        }
+        
+        function showResults2(results, targetUP) {
+            const content = document.getElementById('resultsContent2');
+            
+            content.innerHTML = `
+                <div class="result-section">
+                    <div class="result-title">🎯 目标: 获得 ${targetUP} 个限定角色</div>
+                    <div class="result-detail-grid">
+                        <div class="result-detail-item" style="padding: 25px;">
+                            <div class="result-detail-value" style="color: #FFD700; font-size: 1.5rem;">${results.avgDraws.toLocaleString()}</div>
+                            <div class="result-detail-label">平均总抽数</div>
+                        </div>
+                        <div class="result-detail-item" style="padding: 25px;">
+                            <div class="result-detail-value" style="font-size: 1.5rem;">${results.avgTickets.toLocaleString()}</div>
+                            <div class="result-detail-label">用户需准备抽卡券</div>
+                        </div>
+                        <div class="result-detail-item" style="padding: 25px;">
+                            <div class="result-detail-value" style="font-size: 1.5rem;">${results.avgJade.toLocaleString()}</div>
+                            <div class="result-detail-label">平均消耗合成玉</div>
+                        </div>
+                        <div class="result-detail-item" style="padding: 25px;">
+                            <div class="result-detail-value" style="font-size: 1.5rem;">${results.avgWeaponQuota.toLocaleString()}</div>
+                            <div class="result-detail-label">平均武器配额/次</div>
+                        </div>
+                    </div>
+                    <div style="padding: 10px 20px; background: #252525; font-size: 0.75rem; color: #666666; border-top: 1px solid #2A2A2A;">
+                        * 平均总抽数不含30抽特殊十连；抽卡券 = 合成玉 ÷ 500（向上取整）
+                    </div>
+                </div>
+                
+                <div class="result-section">
+                    <div class="result-title">📊 详细统计</div>
+                    <div class="result-detail-grid">
+                        <div class="result-detail-item">
+                            <div class="result-detail-value">${results.min.toLocaleString()}</div>
+                            <div class="result-detail-label">最少抽数</div>
+                        </div>
+                        <div class="result-detail-item">
+                            <div class="result-detail-value">${results.max.toLocaleString()}</div>
+                            <div class="result-detail-label">最多抽数</div>
+                        </div>
+                        <div class="result-detail-item">
+                            <div class="result-detail-value">${results.median.toLocaleString()}</div>
+                            <div class="result-detail-label">中位数抽数</div>
+                        </div>
+                        <div class="result-detail-item">
+                            <div class="result-detail-value">${(results.stdDev / results.avgDraws * 100).toFixed(1)}%</div>
+                            <div class="result-detail-label">标准差比例</div>
+                        </div>
+                        <div class="result-detail-item">
+                            <div class="result-detail-value">${results.times.toLocaleString()}</div>
+                            <div class="result-detail-label">模拟次数</div>
+                        </div>
+                        <div class="result-detail-item">
+                            <div class="result-detail-value">${results.elapsedMs}ms</div>
+                            <div class="result-detail-label">运行耗时</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('resultsPanel2').classList.add('show');
+        }
+        
+        async function runSimulation2(times, targetUP, config) {
+            const startTime = performance.now();
+            
+            const allDraws = [];
+            let totalDraws = 0;
+            let totalJade = 0;
+            let totalWeaponQuota = 0;
+            let min = Infinity;
+            let max = 0;
+            
+            for (let i = 0; i < times; i++) {
+                const sim = new GachaSimulator2(config);
+                
+                const result = sim.runUntilTarget(targetUP);
+                const draws = result.poolDraws;
+                const jade = result.jadeConsumed;
+                const weaponQuota = result.weaponQuota;
+                
+                allDraws.push(draws);
+                totalDraws += draws;
+                totalJade += jade;
+                totalWeaponQuota += weaponQuota;
+                
+                if (draws < min) min = draws;
+                if (draws > max) max = draws;
+                
+                if (i % 1000 === 0) {
+                    showProgress(i, times);
+                    await new Promise(r => setTimeout(r, 0));
+                }
+            }
+            
+            const endTime = performance.now();
+            const elapsedMs = Math.round(endTime - startTime);
+            
+            // 计算平均值和中位数
+            const avgDraws = totalDraws / times;
+            const avgJade = totalJade / times;
+            const avgWeaponQuota = totalWeaponQuota / times;
+            
+            // 排序用于计算中位数
+            allDraws.sort((a, b) => a - b);
+            const mid = Math.floor(times / 2);
+            const median = times % 2 === 0 
+                ? (allDraws[mid - 1] + allDraws[mid]) / 2 
+                : allDraws[mid];
+            
+            // 计算标准差
+            const variance = allDraws.reduce((sum, d) => sum + Math.pow(d - avgDraws, 2), 0) / times;
+            const stdDev = Math.sqrt(variance);
+            
+            return {
+                times,
+                avgDraws: Math.round(avgDraws),
+                avgJade: Math.round(avgJade),
+                avgTickets: Math.ceil(avgJade / 500),
+                avgWeaponQuota: Math.round(avgWeaponQuota),
+                min,
+                max,
+                median: Math.round(median),
+                stdDev: Math.round(stdDev),
+                elapsedMs
+            };
+        }
+        
+        async function startSimulation2(times) {
+            const config = getConfig2();
+            const targetUP = parseInt(document.getElementById('targetUP').value) || 1;
+            
+            if (targetUP < 1 || targetUP > 20) {
+                alert('请输入1-20之间的目标限定数');
+                return;
+            }
+            
+            const buttons = document.querySelectorAll('#sim2 .draw-btn');
+            buttons.forEach(btn => btn.disabled = true);
+            
+            showProgress(0, times);
+            
+            const results = await runSimulation2(times, targetUP, config);
+            
+            hideProgress();
+            showResults2(results, targetUP);
+            
+            buttons.forEach(btn => btn.disabled = false);
+        }
+        
+        function startCustomSimulation2() {
+            const times = parseInt(document.getElementById('customDraws2').value);
+            if (times > 0 && times <= 1000000) {
+                startSimulation2(times);
+            } else {
+                alert('请输入1到1000000之间的数字');
+            }
+        }
+        
+        // ===== 进度显示 =====
+        
+        function showProgress(current, total) {
+            const overlay = document.getElementById('progressOverlay');
+            const bar = document.getElementById('progressBar');
+            const text = document.getElementById('progressText');
+            
+            overlay.classList.add('show');
+            const percent = (current / total * 100).toFixed(1);
+            bar.style.width = percent + '%';
+            text.textContent = `${current.toLocaleString()} / ${total.toLocaleString()}`;
+        }
+        
+        function hideProgress() {
+            document.getElementById('progressOverlay').classList.remove('show');
+        }
+
+        // ===== 模拟3: 武器抽取 =====
+
+        class GachaSimulator3 {
+            constructor(weaponQuota) {
+                this.weaponQuota = weaponQuota;
+            }
+
+            runOnce() {
+                let remainingQuota = this.weaponQuota;
+                let totalTenPulls = 0;
+                let totalStar6 = 0;
+                let totalLimited = 0;
+
+                // 连续无6星计数（十连次数）
+                let noStar6Consecutive = 0;
+                // 连续无限定计数（十连次数）
+                let noLimitedConsecutive = 0;
+
+                while (remainingQuota >= 1980) {
+                    totalTenPulls++;
+                    remainingQuota -= 1980;
+
+                    // 判断是否触发保底
+                    const trigger6StarPity = noStar6Consecutive >= 3;
+                    const triggerLimitedPity = noLimitedConsecutive >= 7;
+
+                    let has6ThisPull = false;
+                    let hasLimitedThisPull = false;
+
+                    // 前9抽
+                    for (let i = 0; i < 9; i++) {
+                        const roll = Math.random();
+                        const is6Star = roll < 0.04;
+
+                        if (is6Star) {
+                            has6ThisPull = true;
+                            totalStar6++;
+
+                            // 6星中25%限定
+                            if (triggerLimitedPity || roll < 0.04 * 0.25) {
+                                hasLimitedThisPull = true;
+                                totalLimited++;
+                            }
+                        }
+                    }
+
+                    // 第10抽 - 两个保底独立生效
+                    if (!has6ThisPull && trigger6StarPity) {
+                        // 触发6星保底
+                        has6ThisPull = true;
+                        totalStar6++;
+
+                        // 6星保底触发时，限定保底也生效
+                        if (triggerLimitedPity) {
+                            hasLimitedThisPull = true;
+                            totalLimited++;
+                        } else if (Math.random() < 0.25) {
+                            hasLimitedThisPull = true;
+                            totalLimited++;
+                        }
+                    } else if (!has6ThisPull) {
+                        // 没有6星保底，正常概率
+                        if (Math.random() < 0.04) {
+                            has6ThisPull = true;
+                            totalStar6++;
+
+                            // 判断是否限定
+                            if (triggerLimitedPity || Math.random() < 0.25) {
+                                hasLimitedThisPull = true;
+                                totalLimited++;
+                            }
+                        } else {
+                            // 没有6星，检查限定保底
+                            if (triggerLimitedPity) {
+                                hasLimitedThisPull = true;
+                                totalLimited++;
+                            }
+                        }
+                    }
+
+                    // 每十连结束时更新计数器
+                    if (has6ThisPull) {
+                        noStar6Consecutive = 0;
+                    } else {
+                        noStar6Consecutive++;
+                    }
+
+                    if (hasLimitedThisPull) {
+                        noLimitedConsecutive = 0;
+                    } else {
+                        noLimitedConsecutive++;
+                    }
+                }
+
+                return {
+                    totalTenPulls,
+                    totalStar6,
+                    totalLimited
+                };
+            }
+        }
+
+        function getConfig3() {
+            return {
+                weaponQuota: parseInt(document.getElementById('weaponQuotaInput').value) || 0
+            };
+        }
+
+        function showResults3(results) {
+            const content = document.getElementById('resultsContent3');
+
+            content.innerHTML = `
+                <div class="result-section">
+                    <div class="result-title">📊 总览</div>
+                    <div class="stat-grid">
+                        <div class="stat-card">
+                            <div class="stat-value primary">${results.times.toLocaleString()}</div>
+                            <div class="stat-label">模拟次数</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value secondary">${results.avgTenPulls}</div>
+                            <div class="stat-label">平均十连数</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value gold">${results.avgLimited.toFixed(2)}</div>
+                            <div class="stat-label">平均限定/次</div>
+                        </div>
+                        <div class="stat-card highlight">
+                            <div class="stat-value">${results.elapsedMs}</div>
+                            <div class="stat-label">运行耗时(ms)</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="result-section">
+                    <div class="result-title">⚔️ 限定武器分布</div>
+                    <table class="result-table">
+                        <thead>
+                            <tr>
+                                <th>限定数量</th>
+                                <th>占比</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${generateWeaponDistributionRows(results.distribution, results.times)}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="result-section">
+                    <div class="result-title">🎲 详细统计</div>
+                    <div class="stat-grid">
+                        <div class="stat-card">
+                            <div class="stat-value gold">${results.maxLimited}</div>
+                            <div class="stat-label">最多限定</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value secondary">${results.minLimited}</div>
+                            <div class="stat-label">最少限定</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" style="color: #FFD700;">${results.avgStar6.toFixed(2)}</div>
+                            <div class="stat-label">平均6星/次</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('resultsPanel3').classList.add('show');
+        }
+
+        async function runSimulation3(times, weaponQuota) {
+            const startTime = performance.now();
+
+            let totalTenPulls = 0;
+            let totalStar6 = 0;
+            let totalLimited = 0;
+            let minLimited = Infinity;
+            let maxLimited = 0;
+            const distribution = {};
+
+            for (let i = 0; i < times; i++) {
+                const sim = new GachaSimulator3(weaponQuota);
+                const result = sim.runOnce();
+
+                totalTenPulls += result.totalTenPulls;
+                totalStar6 += result.totalStar6;
+                totalLimited += result.totalLimited;
+
+                if (result.totalLimited < minLimited) minLimited = result.totalLimited;
+                if (result.totalLimited > maxLimited) maxLimited = result.totalLimited;
+
+                // 记录限定数量分布
+                const limitCount = result.totalLimited;
+                distribution[limitCount] = (distribution[limitCount] || 0) + 1;
+
+                if (i % 1000 === 0) {
+                    showProgress(i, times);
+                    await new Promise(r => setTimeout(r, 0));
+                }
+            }
+
+            const endTime = performance.now();
+            const elapsedMs = Math.round(endTime - startTime);
+
+            // 计算平均值
+            const avgTenPulls = totalTenPulls / times;
+            const avgStar6 = totalStar6 / times;
+            const avgLimited = totalLimited / times;
+
+            return {
+                times,
+                avgTenPulls: Math.round(avgTenPulls),
+                avgStar6: avgStar6,
+                avgLimited: avgLimited,
+                minLimited,
+                maxLimited,
+                distribution,
+                elapsedMs
+            };
+        }
+
+        function generateWeaponDistributionRows(distribution, totalTimes) {
+            let rows = '';
+
+            // 确定最大限定数量（至少显示到6+）
+            const maxKey = Math.max(...Object.keys(distribution).map(Number), 6);
+            const displayMax = Math.min(maxKey, 6); // 最多显示到6+限定
+
+            // 合并7+限定为统一类别
+            let count7Plus = 0;
+            for (let i = 7; i <= maxKey; i++) {
+                count7Plus += distribution[i] || 0;
+            }
+
+            for (let i = 0; i <= displayMax; i++) {
+                let count;
+                if (i < 6) {
+                    count = distribution[i] || 0;
+                } else {
+                    // 6+限定 = 6限定 + 7+限定
+                    count = (distribution[6] || 0) + count7Plus;
+                }
+                const percent = totalTimes > 0 ? ((count / totalTimes) * 100).toFixed(1) : '0';
+                const isHighlight = i === 0;
+
+                rows += `
+                    <tr class="${isHighlight ? 'highlight-row' : ''}">
+                        <td>${i === 6 ? '6+限定' : i + '限定'}</td>
+                        <td>${percent}%</td>
+                    </tr>
+                `;
+            }
+
+            return rows;
+        }
+
+        async function startSimulation3(times) {
+            const config = getConfig3();
+
+            if (config.weaponQuota < 1980) {
+                alert('武器配额至少需要1980');
+                return;
+            }
+
+            const buttons = document.querySelectorAll('#sim3 .draw-btn');
+            buttons.forEach(btn => btn.disabled = true);
+
+            showProgress(0, times);
+
+            const results = await runSimulation3(times, config.weaponQuota);
+
+            hideProgress();
+            showResults3(results);
+
+            buttons.forEach(btn => btn.disabled = false);
+        }
+
+        function startCustomSimulation3() {
+            const times = parseInt(document.getElementById('customDraws3').value);
+            if (times > 0 && times <= 1000000) {
+                startSimulation3(times);
+            } else {
+                alert('请输入1到1000000之间的数字');
+            }
+        }
+    </script>
+</body>
+</html>
